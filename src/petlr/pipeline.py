@@ -133,6 +133,35 @@ def completion_factors(claims: pd.DataFrame, as_of_month: pd.Timestamp) -> pd.Da
     return pd.DataFrame({"lag": lags, "factor": cum.clip(lower=0.05).round(6).values})
 
 
+def develop_claims(claims: pd.DataFrame, keys: pd.DataFrame, as_of_month: pd.Timestamp):
+    """Monthly claim columns for each (group_id, month) in `keys`, as known at as_of_month.
+
+    Only claims paid by the end of as_of_month count. Recent months are grossed
+    up by the completion factor for their age. Returns
+    (claim columns, completion factor table, claims with no matching key).
+    """
+    as_of_end = as_of_month + pd.offsets.MonthEnd(0)
+    known = claims[claims["paid_date"] <= as_of_end]
+    completion = completion_factors(known, as_of_month)
+    cm = (known.groupby(["group_id", "service_month"])
+          .agg(claims_reported=("amount", "sum"), capped=("capped", "sum"),
+               excess=("excess", "sum"), claim_count=("amount", "size"),
+               large_claim_count=("is_large", "sum"))
+          .reset_index().rename(columns={"service_month": "month"}))
+    out = keys[["group_id", "month"]].merge(cm, on=["group_id", "month"], how="left")
+    orphan = cm.merge(keys[["group_id", "month"]], how="left", indicator=True)
+    orphan = orphan[orphan["_merge"] == "left_only"]
+    for c in ("claims_reported", "capped", "excess", "claim_count", "large_claim_count"):
+        out[c] = out[c].fillna(0)
+    age = month_diff(pd.Series(as_of_month, index=out.index), out["month"])
+    cf = completion.set_index("lag")["factor"]
+    out["completion_factor"] = age.clip(upper=MATURE_LAG).map(cf).astype(float)
+    out["claims_capped"] = out.pop("capped") / out["completion_factor"]
+    out["claims_excess"] = out.pop("excess") / out["completion_factor"]
+    out["claims"] = out["claims_capped"] + out["claims_excess"]
+    return out, completion, orphan
+
+
 def clean(raw: dict[str, pd.DataFrame], as_of: pd.Timestamp | None = None,
           strict: bool = True) -> CleanResult:
     """Run raw checks, fix known problems, build the monthly table, run the gate."""
@@ -201,29 +230,11 @@ def clean(raw: dict[str, pd.DataFrame], as_of: pd.Timestamp | None = None,
     claims["excess"] = claims["amount"] - claims["capped"]
     claims["is_large"] = claims["excess"] > 0
 
-    completion = completion_factors(claims, as_of_month)
-    cm = (claims.groupby(["group_id", "service_month"])
-          .agg(claims_reported=("amount", "sum"), capped=("capped", "sum"),
-               excess=("excess", "sum"), claim_count=("amount", "size"),
-               large_claim_count=("is_large", "sum"))
-          .reset_index().rename(columns={"service_month": "month"}))
-
-    # --- Join exposure, premium and claims -----------------------------------
     monthly = exposure.merge(
         premiums.rename(columns={"billing_month": "month"}),
         on=["group_id", "month"], how="outer")
-    orphan = cm.merge(monthly[["group_id", "month"]], how="left", indicator=True)
-    orphan_claims = orphan[orphan["_merge"] == "left_only"]
-    monthly = monthly.merge(cm, on=["group_id", "month"], how="left")
-    for c in ("claims_reported", "capped", "excess", "claim_count", "large_claim_count"):
-        monthly[c] = monthly[c].fillna(0)
-
-    age = month_diff(pd.Series(as_of_month, index=monthly.index), monthly["month"])
-    cf = completion.set_index("lag")["factor"]
-    monthly["completion_factor"] = age.clip(upper=MATURE_LAG).map(cf).astype(float)
-    monthly["claims_capped"] = monthly.pop("capped") / monthly["completion_factor"]
-    monthly["claims_excess"] = monthly.pop("excess") / monthly["completion_factor"]
-    monthly["claims"] = monthly["claims_capped"] + monthly["claims_excess"]
+    claim_cols, completion, orphan_claims = develop_claims(claims, monthly, as_of_month)
+    monthly = monthly.merge(claim_cols, on=["group_id", "month"], how="left")
 
     # --- Group attributes ------------------------------------------------------
     totals = monthly.groupby("group_id")[["dog_months", "pet_months"]].sum()

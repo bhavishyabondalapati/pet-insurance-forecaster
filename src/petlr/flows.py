@@ -14,7 +14,8 @@ import argparse
 
 from prefect import flow, get_run_logger, task
 
-from petlr import config, generate, pipeline
+from petlr import backtest, config, generate, pipeline
+from petlr.projection import project
 
 
 @task(retries=2, retry_delay_seconds=5)
@@ -38,12 +39,37 @@ def clean_and_gate() -> dict:
     return {"monthly_rows": len(result.monthly), "as_of": str(result.as_of.date())}
 
 
+@task
+def snapshot_projection() -> str:
+    """Save today's default projection so we can later compare it with actuals."""
+    clean = pipeline.load_clean()
+    result = project(clean["monthly"])
+    folder = config.OUT_DIR / "projections"
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"projection_{result.context['as_of_month']}.parquet"
+    result.monthly.to_parquet(path, index=False)
+    lr = result.summary["proj_claims"].sum() / result.summary["proj_premium"].sum()
+    get_run_logger().info("Projected 12-month loss ratio %.1f%% -> %s", 100 * lr, path)
+    return str(path)
+
+
+@task
+def backtest_task() -> dict:
+    r = backtest.run()
+    cred = r["models"]["credibility"]
+    get_run_logger().info("Back-test bias %+.1f%%, group WAPE %.1f%%",
+                          100 * cred["portfolio"]["bias"], 100 * cred["group"]["wape"])
+    return cred
+
+
 @flow(name="loss-ratio-pipeline", log_prints=True)
 def loss_ratio_pipeline(regenerate: bool = True) -> dict:
-    """Synthetic 'extract' -> clean + quality gate."""
+    """Synthetic 'extract' -> clean + gate -> projection snapshot -> back-test."""
     if regenerate:
         generate_raw()
     summary = clean_and_gate()
+    summary["projection"] = snapshot_projection()
+    summary["backtest"] = backtest_task()
     return summary
 
 

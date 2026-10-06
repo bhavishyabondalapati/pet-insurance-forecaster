@@ -32,7 +32,7 @@ class Assumptions:
     """Everything a user can change. The API exposes these as query params."""
 
     annual_trend: float | None = None  # None -> estimate from data
-    credibility_threshold: float = 6_000.0  # pet-months needed for Z = 1
+    credibility_threshold: float = 2_000.0  # pet-months for Z = 1 (tuned by back-test)
     premium_change: float = 0.0  # rate change applied to projected premium
     at_risk_lr: float = 0.85  # projected LR above this -> flagged
     horizon: int = 12  # months to project
@@ -82,12 +82,12 @@ def portfolio_pppm(monthly: pd.DataFrame) -> pd.Series:
 def estimate_trend(monthly: pd.DataFrame) -> float:
     """Annual cost trend from the portfolio's PPPM.
 
-    With 24+ months: compare each month with the same month a year earlier
-    (year-over-year). Seasonality cancels out exactly, because July is
-    compared with July. Fewer months: fall back to a log-linear fit.
+    With 15+ months: compare each month with the same month a year earlier
+    (year-over-year) and take the geometric mean. Seasonality cancels out,
+    because July is compared with July. Fewer months: log-linear fit.
     """
     pppm = portfolio_pppm(monthly)
-    if len(pppm) >= 24:
+    if len(pppm) >= 15:
         yoy = pppm.to_numpy()[12:] / pppm.to_numpy()[:-12]
         return float(np.exp(np.log(yoy).mean()) - 1)  # geometric mean
     if len(pppm) >= 6:
