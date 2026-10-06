@@ -1,6 +1,6 @@
 """Phase 5 - FastAPI service.
 
-    uvicorn petlr.api:app --reload          # http://localhost:8000/docs
+    uvicorn petlr.api:app --reload          # http://localhost:8000/api/docs
 
 Every endpoint takes the model assumptions as query parameters, so the website
 can re-run the projection live as sliders move:
@@ -159,7 +159,8 @@ GROUP_COLUMNS = ["group_id", "segment", "region", "species_mix", "deductible", "
 def create_app(data_dir: Path | None = None) -> FastAPI:
     store = Store(Path(data_dir) if data_dir else config.DATA_DIR)
     app = FastAPI(title="Pet Insurance Loss-Ratio Forecaster",
-                  description="Credibility-weighted loss-ratio projections on synthetic data.")
+                  description="Credibility-weighted loss-ratio projections on synthetic data.",
+                  docs_url="/api/docs", openapi_url="/api/openapi.json")
     app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
                        allow_methods=["GET"], allow_headers=["*"])
     api = APIRouter(prefix="/api")
