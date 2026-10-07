@@ -7,6 +7,7 @@ import Filters from "./components/Filters.jsx";
 import GroupDetail from "./components/GroupDetail.jsx";
 import GroupsTable from "./components/GroupsTable.jsx";
 import LossRatioChart from "./components/LossRatioChart.jsx";
+import Monitoring from "./components/Monitoring.jsx";
 import Sliders from "./components/Sliders.jsx";
 import Tiles from "./components/Tiles.jsx";
 
@@ -35,6 +36,7 @@ export default function App() {
   const [groups, setGroups] = useState(null);
   const [breakdown, setBreakdown] = useState(null);
   const [backtest, setBacktest] = useState(null);
+  const [monitoring, setMonitoring] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -45,6 +47,7 @@ export default function App() {
   useEffect(() => {
     getJSON("/meta").then(setMeta).catch((e) => setError(e.message));
     getJSON("/backtest").then(setBacktest).catch(() => setBacktest(null));
+    getJSON("/monitoring").then(setMonitoring).catch(() => setMonitoring(null));
   }, []);
 
   useEffect(() => {
@@ -107,6 +110,7 @@ export default function App() {
             <Breakdown data={breakdown} by={by} setBy={setBy} atRiskLr={a.at_risk_lr} />
             <Backtest data={backtest} />
           </div>
+          <Monitoring data={monitoring} />
           {groups && (
             <GroupsTable groups={groups.groups} count={groups.count} selected={selected}
               onSelect={setSelected}

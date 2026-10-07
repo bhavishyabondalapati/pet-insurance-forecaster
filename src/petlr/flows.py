@@ -14,7 +14,7 @@ import argparse
 
 from prefect import flow, get_run_logger, task
 
-from petlr import backtest, config, generate, pipeline
+from petlr import backtest, config, generate, monitoring, pipeline
 from petlr.projection import project
 
 
@@ -62,14 +62,28 @@ def backtest_task() -> dict:
     return cred
 
 
+@task
+def monitoring_task() -> str:
+    r = monitoring.run()
+    logger = get_run_logger()
+    for checks in r["sections"].values():
+        for c in checks:
+            if c["status"] != "ok":
+                (logger.error if c["status"] == "fail" else logger.warning)(
+                    "[%s] %s: %s", c["status"].upper(), c["name"], c["message"])
+    logger.info("Monitoring overall: %s %s", r["overall"].upper(), r["counts"])
+    return r["overall"]
+
+
 @flow(name="loss-ratio-pipeline", log_prints=True)
 def loss_ratio_pipeline(regenerate: bool = True) -> dict:
-    """Synthetic 'extract' -> clean + gate -> projection snapshot -> back-test."""
+    """Synthetic 'extract' -> clean + gate -> projection snapshot -> back-test -> monitoring."""
     if regenerate:
         generate_raw()
     summary = clean_and_gate()
     summary["projection"] = snapshot_projection()
     summary["backtest"] = backtest_task()
+    summary["monitoring"] = monitoring_task()
     return summary
 
 

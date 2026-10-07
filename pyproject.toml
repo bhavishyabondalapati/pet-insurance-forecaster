@@ -20,3 +20,9 @@ filterwarnings = ["ignore:Using `httpx` with `starlette.testclient`"]
 [tool.ruff]
 line-length = 100
 src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF"]
+# B008: FastAPI's Depends() in defaults is the documented pattern, and our
+# Assumptions() default is a frozen (immutable) dataclass.
+ignore = ["B008"]

@@ -73,7 +73,7 @@ def test_too_many_duplicates_is_fatal(raw):
     broken["claims"] = pd.concat([broken["claims"]] * 2)  # whole file sent twice
     with pytest.raises(DataQualityError) as exc:
         clean(broken, as_of=AS_OF)
-    dup = [i for i in exc.value.report.raw_issues if i.check == "claim_id:field_uniqueness"][0]
+    dup = next(i for i in exc.value.report.raw_issues if i.check == "claim_id:field_uniqueness")
     assert dup.severity == "fatal" and "tolerance" in dup.action
 
 

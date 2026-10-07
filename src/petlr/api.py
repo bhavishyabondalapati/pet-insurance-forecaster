@@ -28,6 +28,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from petlr import config
+from petlr.monitoring import monitor
 from petlr.pipeline import load_clean
 from petlr.projection import Assumptions, ProjectionResult, aggregate, project
 
@@ -70,7 +71,7 @@ class Store:
         return result
 
     def projection(self, a: Assumptions) -> ProjectionResult:
-        self.data  # reloads the files (and clears the cache) if the pipeline re-ran
+        _ = self.data  # reloads the files (and clears the cache) if the pipeline re-ran
         return self._project(a, self._version)
 
     def read_json(self, name: str) -> dict:
@@ -180,7 +181,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
             "as_of": data["as_of"].date().isoformat(),
             "history_start": data["monthly"]["month"].min().date().isoformat(),
             "groups_total": int(data["monthly"]["group_id"].nunique()),
-            "groups_active": int(len(s)),
+            "groups_active": len(s),
             "large_claim_cap": config.LARGE_CLAIM_CAP,
             "defaults": {"trend": None, "threshold": DEFAULTS.credibility_threshold,
                          "premium_change": DEFAULTS.premium_change,
@@ -234,7 +235,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
         col = sort.lstrip("-")
         if col in s.columns:
             s = s.sort_values(col, ascending=not sort.startswith("-"))
-        return {"count": int(len(s)), "groups": records(s[GROUP_COLUMNS].head(limit))}
+        return {"count": len(s), "groups": records(s[GROUP_COLUMNS].head(limit))}
 
     @api.get("/groups/{group_id}")
     def group_view(group_id: str, a: Assumptions = Depends(assumptions)):
@@ -278,6 +279,15 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     @api.get("/backtest")
     def backtest_view():
         return store.read_json("backtest.json")
+
+    @api.get("/monitoring")
+    def monitoring_view():
+        """Freshness, drift and projection-vs-actual checks, computed now."""
+        data = store.data
+        bt_path = store.out_dir / "backtest.json"
+        bt = json.loads(bt_path.read_text()) if bt_path.exists() else None
+        return monitor(data["monthly"], data["claims"], bt, store.out_dir / "projections",
+                       last_run_epoch=store._meta_mtime())
 
     @api.get("/quality")
     def quality_view():

@@ -238,7 +238,7 @@ def _plant_problems(rng: np.random.Generator, raw: dict[str, pd.DataFrame],
 
     # 2. Pets of cancelled groups still listed as active (term_date wiped).
     cancelled = groups_truth.loc[groups_truth["cancel_date"].notna(), ["group_id", "cancel_date"]]
-    cancel_by_group = dict(zip(cancelled["group_id"], cancelled["cancel_date"]))
+    cancel_by_group = dict(zip(cancelled["group_id"], cancelled["cancel_date"], strict=True))
     group_cancel = pd.to_datetime(pets["group_id"].map(cancel_by_group))
     hit = pets["group_id"].isin(cancelled["group_id"]) & (pets["term_date"] == group_cancel)
     pets.loc[hit, "term_date"] = pd.NaT
@@ -260,7 +260,7 @@ def _plant_problems(rng: np.random.Generator, raw: dict[str, pd.DataFrame],
     # 5. A few bad group start dates.
     bad_ids = rng.choice(groups["group_id"], 7, replace=False)
     bad_values = [pd.Timestamp("1900-01-01")] * 3 + [pd.Timestamp("2099-01-01")] * 2
-    for gid, value in zip(bad_ids[:5], bad_values):
+    for gid, value in zip(bad_ids[:5], bad_values, strict=True):
         groups.loc[groups["group_id"] == gid, "start_date"] = value
     for gid in bad_ids[5:]:  # start date after the group's first bill
         first_bill = premiums.loc[premiums["group_id"] == gid, "billing_month"].min()

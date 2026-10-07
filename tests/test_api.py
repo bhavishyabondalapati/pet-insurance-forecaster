@@ -89,3 +89,11 @@ def test_csv_export(client):
 def test_backtest_and_quality(client):
     assert "credibility" in client.get("/api/backtest").json()["models"]
     assert client.get("/api/quality").json()["passed"] is True
+
+
+def test_monitoring(client):
+    r = client.get("/api/monitoring").json()
+    assert r["overall"] in {"ok", "warn", "fail"}
+    names = [c["name"] for cs in r["sections"].values() for c in cs]
+    assert "data_freshness" in names and "segment_drift_region" in names
+    assert "backtest_actual_vs_expected" in names

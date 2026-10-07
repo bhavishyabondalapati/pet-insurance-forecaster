@@ -179,8 +179,8 @@ def raw_schemas(as_of: pd.Timestamp) -> dict[str, pa.DataFrameSchema]:
 # tolerate before deciding the extract itself is broken (share of the table).
 RAW_ACTIONS = {
     "claim_id:field_uniqueness": ("dropped exact duplicate rows", 0.05),
-    "paid_within_60_days": ("kept; booked to service month, recent months grossed up "
-                            "with completion factors", 0.25),
+    "paid_within_60_days": (("kept; booked to service month, recent months grossed up "
+                             "with completion factors"), 0.25),
     "paid_after_service": ("dropped (impossible dates)", 0.01),
     "service_date:less_than_or_equal_to": ("dropped (after extract date)", 0.01),
     "paid_date:less_than_or_equal_to": ("dropped (after extract date)", 0.01),

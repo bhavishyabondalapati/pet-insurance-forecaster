@@ -230,7 +230,7 @@ def aggregate(history: pd.DataFrame, result: ProjectionResult, group_ids,
     hist12 = hist[hist["month"] > hist["month"].max() - pd.DateOffset(months=12)] \
         if len(hist) else hist
     headline = {
-        "groups": int(len(s)),
+        "groups": len(s),
         "pets": int(s["pets"].sum()),
         "proj_claims": float(proj_claims),
         "proj_premium": float(proj_premium),

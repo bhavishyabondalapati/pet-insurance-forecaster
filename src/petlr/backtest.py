@@ -85,7 +85,7 @@ def run_backtest(monthly: pd.DataFrame, claims: pd.DataFrame, holdout: int = 6,
         out["models"][name] = {
             "portfolio": _score(m["expected"], m["claims"]),
             "group": {**_score(g["expected"], g["actual"]), "lr_mae": lr_mae},
-            "groups_scored": int(len(g)),
+            "groups_scored": len(g),
         }
         group_tables[name] = g
         if name == "credibility":
@@ -106,7 +106,7 @@ def run_backtest(monthly: pd.DataFrame, claims: pd.DataFrame, holdout: int = 6,
     by_band = []
     for label in band.cat.categories:
         ids = band.index[band == label]
-        row = {"band": str(label), "groups": int(len(ids))}
+        row = {"band": str(label), "groups": len(ids)}
         for name, g in group_tables.items():
             sub = g.loc[g.index.intersection(ids)]
             row[name] = _score(sub["expected"], sub["actual"])["wape"] if len(sub) else None

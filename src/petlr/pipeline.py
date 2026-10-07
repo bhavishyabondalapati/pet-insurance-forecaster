@@ -103,7 +103,7 @@ def month_diff(later: pd.Series, earlier: pd.Series) -> pd.Series:
 # ---------------------------------------------------------------------------
 def _raw_checks(raw: dict[str, pd.DataFrame], as_of: pd.Timestamp) -> list[Issue]:
     groups, pets, premiums = raw["groups"], raw["pets"], raw["premiums"]
-    cancel = dict(zip(groups["group_id"], groups["cancel_date"]))
+    cancel = dict(zip(groups["group_id"], groups["cancel_date"], strict=True))
     pets_chk = pets.assign(group_cancel_date=pd.to_datetime(pets["group_id"].map(cancel)))
     first_bill = snap_to_month(premiums["billing_month"]).groupby(premiums["group_id"]).min()
     groups_chk = groups.assign(
@@ -192,7 +192,7 @@ def clean(raw: dict[str, pd.DataFrame], as_of: pd.Timestamp | None = None,
 
     # --- Fix 2: pets of cancelled groups end when the group ends -------------
     cancel = pd.to_datetime(pets["group_id"].map(dict(zip(groups["group_id"],
-                                                            groups["cancel_date"]))))
+                                                            groups["cancel_date"], strict=True))))
     still_on = cancel.notna() & (pets["term_date"].isna() | (pets["term_date"] > cancel))
     pets.loc[still_on, "term_date"] = cancel[still_on]
 
