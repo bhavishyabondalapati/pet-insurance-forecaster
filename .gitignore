@@ -26,3 +26,21 @@ frontend/dist/
 
 # Local tool config
 .claude/
+
+# Security baseline: secrets, environments, logs, databases, raw data, model weights, OS files
+*.pem
+*.key
+*.p12
+credentials*.json
+secrets/
+*.log
+logs/
+*.db
+*.sqlite3
+data/raw/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.h5

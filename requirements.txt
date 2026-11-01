@@ -13,3 +13,6 @@ pytest>=8.0
 httpx>=0.27
 ruff>=0.6
 detect-secrets>=1.5
+
+# Security floors for transitive dependencies (known vulnerabilities below these versions)
+certifi>=2026.10.18

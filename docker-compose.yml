@@ -6,7 +6,7 @@ services:
   prefect:
     image: prefecthq/prefect:3-python3.12
     command: prefect server start --host 0.0.0.0
-    ports: ["4200:4200"]
+    ports: ["127.0.0.1:4200:4200"]   # Prefect UI has no login: localhost only
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4200/api/health')"]
       interval: 5s
@@ -36,7 +36,7 @@ services:
 
   api:
     build: .
-    ports: ["8000:8000"]
+    ports: ["127.0.0.1:8000:8000"]
     volumes: ["data:/data"]
     depends_on:
       pipeline-init: { condition: service_completed_successfully }
@@ -49,7 +49,7 @@ services:
 
   web:
     build: ./frontend
-    ports: ["8080:80"]
+    ports: ["127.0.0.1:8080:80"]
     depends_on:
       api: { condition: service_healthy }
     restart: unless-stopped

@@ -159,6 +159,7 @@ cd frontend && npm test      # 5 Vitest tests
 
 ```
 pet-insurance-forecaster/
+├── LICENSE
 ├── requirements.txt
 ├── pyproject.toml            Package config (src layout), pytest and ruff settings
 ├── .env.example              Placeholder settings
@@ -219,3 +220,7 @@ pet-insurance-forecaster/
 - Trend estimation is unreliable with short history: at the back-test cutoff (18 months), the estimate was 3.9% against a true 8%, producing a −7.6% portfolio bias.
 - Shocks that begin after the projection cutoff are not anticipated; monitoring detects them after the fact.
 - The free Render deployment does not run the daily schedule.
+
+## License
+
+Code is released under the MIT License; see [LICENSE](LICENSE).
